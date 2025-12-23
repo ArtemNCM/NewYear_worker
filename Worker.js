@@ -2,7 +2,7 @@ export default {
     async fetch(request) {
       const COUNTDOWN_URL = "https://justalink.click/";
       const MAIN_URL = "https://happynewyear.best/";
-      const SWITCH_AT = "20251224004000"; // YYYYMMDDHHMMSS (Europe/Kyiv)
+      const SWITCH_AT = "20251224004500"; // YYYYMMDDHHMMSS (Europe/Kyiv)
   
       try {
         const now = kyivStamp(new Date());
@@ -49,4 +49,5 @@ export default {
       return null;
     }
   }
+
   
