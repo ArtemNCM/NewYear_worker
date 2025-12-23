@@ -1,52 +1,44 @@
 export default {
-    async fetch(request) {
-      const COUNTDOWN_URL = "https://justalink.click/";
-      const MAIN_URL = "https://happynewyear.best/";
-      const SWITCH_AT = "20251224010000"; // YYYYMMDDHHMMSS (Europe/Kyiv)
-  
-      try {
-        const now = kyivStamp(new Date());
-        
-        // Validate format: must be exactly 14 digits (YYYYMMDDHHMMSS)
-        if (!now || now.length !== 14 || !/^\d{14}$/.test(now)) {
-          // If date formatting fails, default to countdown URL
-          return Response.redirect(COUNTDOWN_URL, 302);
-        }
-        
-        const target = (now < SWITCH_AT) ? COUNTDOWN_URL : MAIN_URL;
-        const resp = Response.redirect(target, 302);
-        resp.headers.set("Cache-Control", "no-store");
-        return resp;
-      } catch (error) {
-        // On any error, default to countdown URL
-        return Response.redirect(COUNTDOWN_URL, 302);
-      }
-    }
-  };
-  
-  function kyivStamp(date) {
+  async fetch(request) {
+    const COUNTDOWN_URL = "https://justalink.click/";
+    const MAIN_URL = "https://happynewyear.best/";
+    const SWITCH_AT = "20251224010000"; // YYYYMMDDHHMMSS (Kyiv)
+
+    const now = kyivStamp(new Date());
+
+    // якщо дата не зібралась — ведемо на відлік
+    const target = (now && /^\d{14}$/.test(now) && now >= SWITCH_AT)
+      ? MAIN_URL
+      : COUNTDOWN_URL;
+
+    // Редірект БЕЗ Response.redirect + БЕЗ headers.set (щоб не було immutable headers)
+    return new Response(null, {
+      status: 302,
+      headers: {
+        "Location": target,
+        "Cache-Control": "no-store, no-cache, max-age=0, must-revalidate",
+        "Pragma": "no-cache",
+        // тимчасово для перевірки, що прод оновився:
+        "X-Worker-Version": "v4",
+      },
+    });
+  }
+};
+
+function kyivStamp(date) {
+  const tzCandidates = ["Europe/Kyiv", "Europe/Kiev"]; // fallback
+  for (const timeZone of tzCandidates) {
     try {
       const parts = new Intl.DateTimeFormat("en-GB", {
-        timeZone: "Europe/Kyiv",
+        timeZone,
         year: "numeric", month: "2-digit", day: "2-digit",
         hour: "2-digit", minute: "2-digit", second: "2-digit",
-        hour12: false
+        hour12: false,
       }).formatToParts(date);
-  
+
       const m = Object.fromEntries(parts.map(p => [p.type, p.value]));
-      
-      // Validate all required parts are present
-      const required = ['year', 'month', 'day', 'hour', 'minute', 'second'];
-      for (const key of required) {
-        if (!m[key]) {
-          throw new Error(`Missing date part: ${key}`);
-        }
-      }
-      
       return `${m.year}${m.month}${m.day}${m.hour}${m.minute}${m.second}`;
-    } catch (error) {
-      // Return null if formatting fails (will be caught by validation)
-      return null;
-    }
+    } catch (_) {}
   }
-  
+  return null;
+}
